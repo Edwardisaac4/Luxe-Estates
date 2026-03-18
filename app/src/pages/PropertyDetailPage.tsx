@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Bed, Bath, Square, MapPin, Phone, Mail, ArrowLeft, Heart, Share2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -7,7 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import Navigation from '@/sections/Navigation';
 import Footer from '@/sections/Footer';
-import { properties, agents } from '@/data/mockData';
+import { AuthModal } from '@/components/ui/auth-modal';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSavedProperties } from '@/contexts/SavedPropertiesContext';
+import { useInquiries } from '@/contexts/InquiriesContext';
+import { useProperties } from '@/contexts/PropertiesContext';
+import { agents } from '@/data/mockData';
 
 function formatPrice(price: number) {
   if (price >= 1000000) {
@@ -18,8 +24,21 @@ function formatPrice(price: number) {
 
 export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { properties } = useProperties();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'favorite' | 'inquiry' | null>(null);
+  const [inquiryMessage, setInquiryMessage] = useState('');
+  const [inquiryName, setInquiryName] = useState('');
+  const [inquiryEmail, setInquiryEmail] = useState('');
+  const [inquiryPhone, setInquiryPhone] = useState('');
+  
+  const { user } = useAuth();
+  const { toggleFavorite, isFavorite } = useSavedProperties();
+  const { sendInquiry } = useInquiries();
+
   const property = properties.find((p) => p.id === id);
-  const agent = agents[0]; // In a real app, this would be linked to the property
+  // Find the assigned agent from the property, fallback to first agent
+  const agent = property?.agent || agents[0];
 
   if (!property) {
     return (
@@ -41,9 +60,46 @@ export default function PropertyDetailPage() {
     );
   }
 
+  const handleFavoriteClick = () => {
+    if (!user) {
+      setPendingAction('favorite');
+      setIsAuthModalOpen(true);
+      return;
+    }
+    if (property) toggleFavorite(property.id);
+  };
+
   const handleInquiry = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success('Inquiry sent successfully! We will contact you soon.');
+    // Allow guest inquiries - no auth check needed here anymore
+    executeInquiry();
+  };
+
+  const executeInquiry = () => {
+    if (property) {
+      sendInquiry(
+        property.id, 
+        property.title,
+        inquiryMessage,
+        agent?.name || 'Admin',
+        inquiryEmail,
+        inquiryName,
+        inquiryPhone
+      );
+      setInquiryMessage('');
+      setInquiryName('');
+      setInquiryEmail('');
+      setInquiryPhone('');
+    }
+  };
+
+  const handleAuthSuccess = () => {
+    if (pendingAction === 'favorite' && property) {
+      toggleFavorite(property.id);
+    } else if (pendingAction === 'inquiry') {
+      executeInquiry();
+    }
+    setPendingAction(null);
   };
 
   return (
@@ -107,9 +163,11 @@ export default function PropertyDetailPage() {
             variant="ghost"
             size="icon"
             className="bg-white/20 backdrop-blur-sm text-white hover:bg-white/30"
-            onClick={() => toast.success('Added to favorites!')}
+            onClick={handleFavoriteClick}
           >
-            <Heart className="w-5 h-5" />
+            <Heart 
+              className={`w-5 h-5 transition-colors ${isFavorite(property.id) ? 'fill-red-500 text-red-500' : ''}`} 
+            />
           </Button>
           <Button
             variant="ghost"
@@ -219,13 +277,17 @@ export default function PropertyDetailPage() {
                   </p>
                   <p className="font-body text-dark/60">{agent.role}</p>
                   <div className="flex gap-3 mt-2">
-                    <Button size="sm" variant="outline" className="gap-2">
-                      <Phone className="w-4 h-4" />
-                      Call
+                    <Button size="sm" variant="outline" className="gap-2" asChild>
+                      <a href={`tel:${agent?.phone}`}>
+                        <Phone className="w-4 h-4" />
+                        Call
+                      </a>
                     </Button>
-                    <Button size="sm" variant="outline" className="gap-2">
-                      <Mail className="w-4 h-4" />
-                      Email
+                    <Button size="sm" variant="outline" className="gap-2" asChild>
+                      <a href={`mailto:${agent?.email}?subject=Inquiry: ${property.title}`}>
+                        <Mail className="w-4 h-4" />
+                        Email
+                      </a>
                     </Button>
                   </div>
                 </div>
@@ -245,19 +307,36 @@ export default function PropertyDetailPage() {
 
               <form onSubmit={handleInquiry} className="space-y-4">
                 <div>
-                  <Input placeholder="Your Name" required />
+                  <Input
+                    placeholder="Your Name"
+                    required
+                    value={inquiryName}
+                    onChange={(e) => setInquiryName(e.target.value)}
+                  />
                 </div>
                 <div>
-                  <Input type="email" placeholder="Your Email" required />
+                  <Input
+                    type="email"
+                    placeholder="Your Email"
+                    required
+                    value={inquiryEmail}
+                    onChange={(e) => setInquiryEmail(e.target.value)}
+                  />
                 </div>
                 <div>
-                  <Input type="tel" placeholder="Your Phone" />
+                  <Input
+                    type="tel"
+                    placeholder="Your Phone"
+                    value={inquiryPhone}
+                    onChange={(e) => setInquiryPhone(e.target.value)}
+                  />
                 </div>
                 <div>
                   <Textarea
                     placeholder="Your Message"
                     rows={4}
-                    defaultValue={`I'm interested in ${property.title}`}
+                    value={inquiryMessage}
+                    onChange={(e) => setInquiryMessage(e.target.value)}
                   />
                 </div>
                 <Button
@@ -273,6 +352,22 @@ export default function PropertyDetailPage() {
       </main>
 
       <Footer />
+      
+      <AuthModal 
+        isOpen={isAuthModalOpen}
+        onClose={() => {
+          setIsAuthModalOpen(false);
+          setPendingAction(null);
+        }}
+        onSuccess={handleAuthSuccess}
+        customMessage={
+          pendingAction === 'favorite' 
+            ? "Sign in to save this property to your profile." 
+            : pendingAction === 'inquiry' 
+            ? "Sign in to send messages directly to the listing agent."
+            : undefined
+        }
+      />
     </div>
   );
 }

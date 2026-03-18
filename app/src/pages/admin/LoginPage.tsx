@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, Mail, ArrowLeft } from 'lucide-react';
@@ -5,6 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Dialog, 
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+ } from "@/components/ui/dialog";
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,6 +21,8 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,11 +36,22 @@ export default function LoginPage() {
       } else {
         toast.error('Invalid credentials. Please try again.');
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!resetEmail) {
+      toast.error('please enter your registered Email Address');
+      return;
+    }
+
+    toast.success('Password reset link sent to your email address');
+    setResetEmail('');
+    setForgotPasswordOpen(false);
   };
 
   return (
@@ -76,7 +97,7 @@ export default function LoginPage() {
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark/40" />
                 <Input
                   type="email"
-                  placeholder="admin@luxestates.com"
+                  placeholder="eg. tea@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 h-12"
@@ -93,7 +114,7 @@ export default function LoginPage() {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-dark/40" />
                 <Input
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
+                  placeholder="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10 h-12"
@@ -120,12 +141,13 @@ export default function LoginPage() {
                   Remember me
                 </span>
               </label>
-              <Link
-                to="#"
-                className="font-body text-sm text-beige hover:text-beige/80"
+              <button
+                type='button'
+                onClick={() => setForgotPasswordOpen(true)}
+                className='font-body text-sm text-dark/60 hover:text-dark'
               >
-                Forgot password?
-              </Link>
+                Forgot Password?
+              </button>
             </div>
 
             <Button
@@ -151,9 +173,42 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-white/40 text-sm mt-8">
-          © 2024 Luxe Estates. All rights reserved.
+          © 2026 Luxe Estates. All rights reserved.
         </p>
       </div>
+
+      <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display">Reset Password</DialogTitle>
+            <DialogDescription className="font-body">
+              Enter your email address and we'll send you a link to reset your password.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-2">
+            <label className="font-body text-sm font-medium text-dark mb-2 block">
+              Email Address
+            </label>
+            <Input
+              type="email"
+              placeholder="admin@luxestates.com"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setForgotPasswordOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleForgotPassword}>
+              Send Reset Link
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }

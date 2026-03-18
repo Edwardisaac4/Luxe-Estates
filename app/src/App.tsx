@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Toaster } from '@/components/ui/sonner';
@@ -9,18 +8,28 @@ import ListingsPage from '@/pages/ListingsPage';
 import PropertyDetailPage from '@/pages/PropertyDetailPage';
 import AboutPage from '@/pages/AboutPage';
 import ContactPage from '@/pages/ContactPage';
+import ServicesPage from '@/pages/ServicesPage';
+import ClientPortal from '@/pages/ClientPortal';
+import ClientLogin from '@/pages/ClientLogin';
 
 // Admin Pages
 import AdminLayout from '@/layouts/AdminLayout';
 import Dashboard from '@/pages/admin/Dashboard';
 import Properties from '@/pages/admin/Properties';
+import PropertyForm from '@/pages/admin/PropertyForm';
 import Agents from '@/pages/admin/Agents';
+import AgentForm from '@/pages/admin/AgentForm';
 import Inquiries from '@/pages/admin/Inquiries';
 import Settings from '@/pages/admin/Settings';
 import LoginPage from '@/pages/admin/LoginPage';
 
 // Context
 import { AuthProvider } from '@/contexts/AuthContext';
+import { SavedPropertiesProvider } from '@/contexts/SavedPropertiesContext';
+import { InquiriesProvider } from '@/contexts/InquiriesContext';
+import { PropertiesProvider } from '@/contexts/PropertiesContext';
+import { AgentsProvider } from '@/contexts/AgentsContext';
+import { ToursProvider } from '@/contexts/ToursContext';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -50,31 +59,48 @@ function App() {
 
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/listings" element={<ListingsPage />} />
-          <Route path="/property/:id" element={<PropertyDetailPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          
-          {/* Admin Routes */}
-          <Route path="/admin/login" element={<LoginPage />} />
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Navigate to="/admin/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="properties" element={<Properties />} />
-            <Route path="agents" element={<Agents />} />
-            <Route path="inquiries" element={<Inquiries />} />
-            <Route path="settings" element={<Settings />} />
-          </Route>
-          
-          {/* Catch all */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </Router>
-      <Toaster position="top-right" />
+      <PropertiesProvider>
+        <AgentsProvider>
+          <SavedPropertiesProvider>
+            <InquiriesProvider>
+              <ToursProvider>
+                <Router>
+                  <Routes>
+                  {/* Public Routes */}
+                <Route path="/" element={<HomePage />} />
+                <Route path="/listings" element={<ListingsPage />} />
+                <Route path="/property/:id" element={<PropertyDetailPage />} />
+                <Route path="/about" element={<AboutPage />} />
+                <Route path="/services" element={<ServicesPage />} />
+                <Route path="/contact" element={<ContactPage />} />
+                <Route path="/portal" element={<ClientPortal />} />
+                <Route path="/client-login" element={<ClientLogin />} />
+                
+                {/* Admin Routes */}
+                <Route path="/admin/login" element={<LoginPage />} />
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                  <Route path="dashboard" element={<Dashboard />} />
+                  <Route path="properties" element={<Properties />} />
+                  <Route path="properties/new" element={<PropertyForm />} />
+                  <Route path="properties/:id/edit" element={<PropertyForm />} />
+                  <Route path="agents" element={<Agents />} />
+                  <Route path="agents/new" element={<AgentForm />} />
+                  <Route path="agents/:id/edit" element={<AgentForm />} />
+                  <Route path="inquiries" element={<Inquiries />} />
+                  <Route path="settings" element={<Settings />} />
+                </Route>
+                
+                {/* Catch all */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Router>
+              </ToursProvider>
+              <Toaster position="top-right" />
+            </InquiriesProvider>
+          </SavedPropertiesProvider>
+        </AgentsProvider>
+      </PropertiesProvider>
     </AuthProvider>
   );
 }

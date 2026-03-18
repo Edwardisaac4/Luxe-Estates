@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { Bed, Bath, Square, MapPin, Search, Filter, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,131 +20,185 @@ import {
 } from '@/components/ui/sheet';
 import Navigation from '@/sections/Navigation';
 import Footer from '@/sections/Footer';
-import { properties } from '@/data/mockData';
+import { useProperties } from '@/contexts/PropertiesContext';
 
 function formatPrice(price: number) {
-  if (price >= 1000000) {
-    return `$${(price / 1000000).toFixed(1)}M`;
+  if (price >= 1000000000) {
+    return `₦${(price / 1000000000).toFixed(1)}B`;
   }
-  return `$${(price / 1000).toFixed(0)}K`;
+  if (price >= 1000000) {
+    return `₦${(price / 1000000).toFixed(1)}M`;
+  }
+  return `₦${(price / 1000).toFixed(0)}K`;
 }
 
+interface FilterContentProps {
+  propertyType: string;
+  setPropertyType: (v: string) => void;
+  priceRange: string;
+  setPriceRange: (v: string) => void;
+  listingType: string;
+  setListingType: (v: string) => void;
+  beds: string;
+  setBeds: (v: string) => void;
+  setSearchQuery: (v: string) => void;
+}
+
+const FilterContent = ({ 
+  propertyType, setPropertyType, 
+  priceRange, setPriceRange, 
+  listingType, setListingType,
+  beds, setBeds,
+  setSearchQuery 
+}: FilterContentProps) => (
+  <div className="space-y-6">
+    {/* Property Type */}
+    <div>
+      <label className="font-body text-sm font-medium text-dark mb-2 block">
+        Property Type
+      </label>
+      <Select value={propertyType} onValueChange={setPropertyType}>
+        <SelectTrigger>
+          <SelectValue placeholder="All Types" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Types</SelectItem>
+          <SelectItem value="house">House</SelectItem>
+          <SelectItem value="apartment">Apartment</SelectItem>
+          <SelectItem value="condo">Condo</SelectItem>
+          <SelectItem value="villa">Villa</SelectItem>
+          <SelectItem value="penthouse">Penthouse</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    {/* Price Range */}
+    <div>
+      <label className="font-body text-sm font-medium text-dark mb-2 block">
+        Price Range
+      </label>
+      <Select value={priceRange} onValueChange={setPriceRange}>
+        <SelectTrigger>
+          <SelectValue placeholder="Any Price" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Any Price</SelectItem>
+          <SelectItem value="0-50000000">₦0 - ₦50M</SelectItem>
+          <SelectItem value="50000000-150000000">₦50M - ₦150M</SelectItem>
+          <SelectItem value="150000000-500000000">₦150M - ₦500M</SelectItem>
+          <SelectItem value="500000000-1000000000">₦500M - ₦1B</SelectItem>
+          <SelectItem value="1000000000+">₦1B+</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    {/* Listing Type */}
+    <div>
+      <label className="font-body text-sm font-medium text-dark mb-2 block">
+        Listing Type
+      </label>
+      <Select value={listingType} onValueChange={setListingType}>
+        <SelectTrigger>
+          <SelectValue placeholder="All Listings" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Listings</SelectItem>
+          <SelectItem value="sale">For Sale</SelectItem>
+          <SelectItem value="rent">For Rent</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    {/* Beds */}
+    <div>
+      <label className="font-body text-sm font-medium text-dark mb-2 block">
+        Bedrooms
+      </label>
+      <Select value={beds} onValueChange={setBeds}>
+        <SelectTrigger>
+          <SelectValue placeholder="Any" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Any</SelectItem>
+          <SelectItem value="1">1+ Beds</SelectItem>
+          <SelectItem value="2">2+ Beds</SelectItem>
+          <SelectItem value="3">3+ Beds</SelectItem>
+          <SelectItem value="4">4+ Beds</SelectItem>
+          <SelectItem value="5">5+ Beds</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    {/* Clear Filters */}
+    <Button
+      variant="outline"
+      className="w-full"
+      onClick={() => {
+        setPropertyType('all');
+        setPriceRange('all');
+        setListingType('all');
+        setBeds('all');
+        setSearchQuery('');
+      }}
+    >
+      <X className="w-4 h-4 mr-2" />
+      Clear Filters
+    </Button>
+  </div>
+);
+
 export default function ListingsPage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [propertyType, setPropertyType] = useState('all');
-  const [priceRange, setPriceRange] = useState('all');
-  const [listingType, setListingType] = useState('all');
+  const [searchParams] = useSearchParams();
+  const { properties } = useProperties();
+  
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('location') || '');
+  const [propertyType, setPropertyType] = useState(searchParams.get('propertyType') || 'all');
+  const [priceRange, setPriceRange] = useState(searchParams.get('priceRange') || 'all');
+  const [listingType, setListingType] = useState(searchParams.get('type') || 'all');
+  const [beds, setBeds] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 12;
+
+  const activeFiltersCount = [propertyType, priceRange, listingType, beds].filter(f => f !== 'all').length + (searchQuery ? 1 : 0);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, propertyType, priceRange, listingType, beds, sortBy]);
 
   // Filter properties
-  const filteredProperties = properties.filter((property) => {
-    // Search query filter
-    if (
-      searchQuery &&
-      !property.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      !property.location.toLowerCase().includes(searchQuery.toLowerCase())
-    ) {
-      return false;
-    }
-
-    // Property type filter
-    if (propertyType !== 'all') {
-      // In a real app, you'd have a type field on the property
+  const filteredProperties = properties
+    .filter((property) => {
+      if (property.status === 'sold') return false; // Hide sold properties from public listing
+      if (
+        searchQuery &&
+        !property.title.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !property.location.toLowerCase().includes(searchQuery.toLowerCase())
+      ) return false;
+      if (propertyType !== 'all' && property.propertyType !== propertyType) return false;
+      if (listingType !== 'all' && property.type !== listingType) return false;
+      if (beds !== 'all' && property.beds < parseInt(beds)) return false;
+      if (priceRange !== 'all') {
+        const [minStr, maxStr] = priceRange.split('-');
+        const min = parseInt(minStr) || 0;
+        const max = maxStr?.endsWith('+') ? Infinity : parseInt(maxStr) || Infinity;
+        if (property.price < min || property.price > max) return false;
+      }
       return true;
-    }
+    })
+    .sort((a, b) => {
+      if (sortBy === 'price-asc') return a.price - b.price;
+      if (sortBy === 'price-desc') return b.price - a.price;
+      // 'newest' — sort by createdAt desc, fall back to original order
+      return (b.createdAt || '').localeCompare(a.createdAt || '');
+    });
 
-    // Price range filter
-    if (priceRange !== 'all') {
-      const [min, max] = priceRange.split('-').map((v) => {
-        if (v.endsWith('+')) return parseInt(v) || 0;
-        return parseInt(v) || 0;
-      });
-      if (max && (property.price < min || property.price > max)) return false;
-      if (!max && property.price < min) return false;
-    }
-
-    // Listing type filter
-    if (listingType !== 'all' && property.type !== listingType) {
-      return false;
-    }
-
-    return true;
-  });
-
-  const FilterContent = () => (
-    <div className="space-y-6">
-      {/* Property Type */}
-      <div>
-        <label className="font-body text-sm font-medium text-dark mb-2 block">
-          Property Type
-        </label>
-        <Select value={propertyType} onValueChange={setPropertyType}>
-          <SelectTrigger>
-            <SelectValue placeholder="All Types" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            <SelectItem value="house">House</SelectItem>
-            <SelectItem value="apartment">Apartment</SelectItem>
-            <SelectItem value="condo">Condo</SelectItem>
-            <SelectItem value="villa">Villa</SelectItem>
-            <SelectItem value="penthouse">Penthouse</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Price Range */}
-      <div>
-        <label className="font-body text-sm font-medium text-dark mb-2 block">
-          Price Range
-        </label>
-        <Select value={priceRange} onValueChange={setPriceRange}>
-          <SelectTrigger>
-            <SelectValue placeholder="Any Price" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Any Price</SelectItem>
-            <SelectItem value="0-500000">$0 - $500,000</SelectItem>
-            <SelectItem value="500000-1000000">$500,000 - $1M</SelectItem>
-            <SelectItem value="1000000-2500000">$1M - $2.5M</SelectItem>
-            <SelectItem value="2500000-5000000">$2.5M - $5M</SelectItem>
-            <SelectItem value="5000000+">$5M+</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Listing Type */}
-      <div>
-        <label className="font-body text-sm font-medium text-dark mb-2 block">
-          Listing Type
-        </label>
-        <Select value={listingType} onValueChange={setListingType}>
-          <SelectTrigger>
-            <SelectValue placeholder="All Listings" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Listings</SelectItem>
-            <SelectItem value="sale">For Sale</SelectItem>
-            <SelectItem value="rent">For Rent</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Clear Filters */}
-      <Button
-        variant="outline"
-        className="w-full"
-        onClick={() => {
-          setPropertyType('all');
-          setPriceRange('all');
-          setListingType('all');
-          setSearchQuery('');
-        }}
-      >
-        <X className="w-4 h-4 mr-2" />
-        Clear Filters
-      </Button>
-    </div>
-  );
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredProperties.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const paginatedProperties = filteredProperties.slice(startIndex, endIndex);
 
   return (
     <div className="min-h-screen bg-light">
@@ -180,7 +234,7 @@ export default function ListingsPage() {
             {/* Desktop Filters */}
             <div className="hidden md:flex gap-3">
               <Select value={propertyType} onValueChange={setPropertyType}>
-                <SelectTrigger className="w-40 h-12">
+                <SelectTrigger className="w-36 h-12">
                   <SelectValue placeholder="Property Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -194,27 +248,52 @@ export default function ListingsPage() {
               </Select>
 
               <Select value={priceRange} onValueChange={setPriceRange}>
-                <SelectTrigger className="w-40 h-12">
+                <SelectTrigger className="w-36 h-12">
                   <SelectValue placeholder="Price Range" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Any Price</SelectItem>
-                  <SelectItem value="0-500000">$0 - $500K</SelectItem>
-                  <SelectItem value="500000-1000000">$500K - $1M</SelectItem>
-                  <SelectItem value="1000000-2500000">$1M - $2.5M</SelectItem>
-                  <SelectItem value="2500000-5000000">$2.5M - $5M</SelectItem>
-                  <SelectItem value="5000000+">$5M+</SelectItem>
+                  <SelectItem value="0-50000000">₦0 - ₦50M</SelectItem>
+                  <SelectItem value="50000000-150000000">₦50M - ₦150M</SelectItem>
+                  <SelectItem value="150000000-500000000">₦150M - ₦500M</SelectItem>
+                  <SelectItem value="500000000-1000000000">₦500M - ₦1B</SelectItem>
+                  <SelectItem value="1000000000+">₦1B+</SelectItem>
                 </SelectContent>
               </Select>
 
               <Select value={listingType} onValueChange={setListingType}>
-                <SelectTrigger className="w-40 h-12">
-                  <SelectValue placeholder="Listing Type" />
+                <SelectTrigger className="w-32 h-12">
+                  <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Listings</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="sale">For Sale</SelectItem>
                   <SelectItem value="rent">For Rent</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={beds} onValueChange={setBeds}>
+                <SelectTrigger className="w-28 h-12">
+                  <SelectValue placeholder="Beds" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Any Beds</SelectItem>
+                  <SelectItem value="1">1+ Beds</SelectItem>
+                  <SelectItem value="2">2+ Beds</SelectItem>
+                  <SelectItem value="3">3+ Beds</SelectItem>
+                  <SelectItem value="4">4+ Beds</SelectItem>
+                  <SelectItem value="5">5+ Beds</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-36 h-12">
+                  <SelectValue placeholder="Sort By" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="price-asc">Price: Low → High</SelectItem>
+                  <SelectItem value="price-desc">Price: High → Low</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -232,7 +311,17 @@ export default function ListingsPage() {
                   <SheetTitle className="font-display">Filters</SheetTitle>
                 </SheetHeader>
                 <div className="mt-6">
-                  <FilterContent />
+                  <FilterContent 
+                    propertyType={propertyType} 
+                    setPropertyType={setPropertyType}
+                    priceRange={priceRange}
+                    setPriceRange={setPriceRange}
+                    listingType={listingType}
+                    setListingType={setListingType}
+                    beds={beds}
+                    setBeds={setBeds}
+                    setSearchQuery={setSearchQuery}
+                  />
                 </div>
               </SheetContent>
             </Sheet>
@@ -242,17 +331,26 @@ export default function ListingsPage() {
 
       {/* Results */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Results Count */}
-        <div className="mb-6">
+        {/* Results Count + Active Filters */}
+        <div className="mb-6 flex flex-wrap items-center gap-3">
           <p className="font-body text-dark/60">
-            Showing {filteredProperties.length} properties
+            Showing <strong>{filteredProperties.length}</strong> of {properties.length} properties
           </p>
+          {activeFiltersCount > 0 && (
+            <button
+              onClick={() => { setPropertyType('all'); setPriceRange('all'); setListingType('all'); setBeds('all'); setSearchQuery(''); }}
+              className="inline-flex items-center gap-1.5 text-xs font-body font-medium text-beige border border-beige/40 bg-beige/10 px-3 py-1.5 rounded-full hover:bg-beige/20 transition-colors"
+            >
+              <X className="w-3 h-3" />
+              Clear {activeFiltersCount} filter{activeFiltersCount !== 1 ? 's' : ''}
+            </button>
+          )}
         </div>
 
         {/* Property Grid */}
         {filteredProperties.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredProperties.map((property) => (
+            {paginatedProperties.map((property) => (
               <Link
                 key={property.id}
                 to={`/property/${property.id}`}
@@ -341,20 +439,67 @@ export default function ListingsPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20">
-            <p className="font-body text-lg text-dark/60 mb-4">
-              No properties found matching your criteria
+          <div className="text-center py-24 bg-white rounded-2xl border border-border">
+            <div className="w-16 h-16 bg-beige/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search className="w-8 h-8 text-beige" />
+            </div>
+            <h3 className="font-display text-2xl font-bold text-dark mb-2">
+              No properties found
+            </h3>
+            <p className="font-body text-dark/60 max-w-md mx-auto">
+              We couldn't find any properties matching your current filters. Try
+              adjusting your search criteria or clearing filters.
             </p>
             <Button
-              variant="outline"
+              className="mt-6 font-body"
               onClick={() => {
                 setPropertyType('all');
                 setPriceRange('all');
                 setListingType('all');
+                setBeds('all');
                 setSearchQuery('');
               }}
             >
-              Clear Filters
+              Clear All Filters
+            </Button>
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="mt-12 flex justify-center items-center gap-4">
+            <Button
+              variant="outline"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              className="px-6 border-dark/10"
+            >
+              Previous
+            </Button>
+            
+            <div className="flex items-center gap-2">
+              {[...Array(totalPages)].map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentPage(i + 1)}
+                  className={`w-10 h-10 rounded-full font-display font-medium text-sm transition-colors ${
+                    currentPage === i + 1 
+                      ? 'bg-dark text-white' 
+                      : 'text-dark/60 hover:bg-dark/5'
+                  }`}
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+
+            <Button
+              variant="outline"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              className="px-6 border-dark/10"
+            >
+              Next
             </Button>
           </div>
         )}

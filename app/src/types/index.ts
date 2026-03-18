@@ -9,6 +9,7 @@ export interface Property {
   image: string;
   badge?: 'Featured' | 'New' | 'Hot';
   type: 'sale' | 'rent';
+  propertyType?: 'house' | 'apartment' | 'condo' | 'villa' | 'penthouse';
   description?: string;
   amenities?: string[];
   agent?: Agent;
@@ -51,6 +52,8 @@ export interface User {
   email: string;
   role: 'admin' | 'agent' | 'user';
   avatar?: string;
+  bio?: string;
+  phone?: string;
 }
 
 export interface DashboardStats {

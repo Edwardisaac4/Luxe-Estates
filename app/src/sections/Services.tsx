@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Search, Building, TrendingUp, Shield, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Search, Building, TrendingUp, Shield, Handshake, Landmark, BedDouble, ChevronRight } from 'lucide-react';
 import { useInView } from '@/hooks/useInView';
 import { services } from '@/data/mockData';
 
@@ -8,6 +9,9 @@ const iconMap: Record<string, React.ElementType> = {
   Building,
   TrendingUp,
   Shield,
+  Handshake,
+  Landmark,
+  BedDouble,
 };
 
 export default function Services() {
@@ -44,7 +48,7 @@ export default function Services() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Service List */}
           <div className="space-y-4">
-            {services.map((service, index) => {
+            {services.slice(0, 4).map((service, index) => {
               const Icon = iconMap[service.icon] || Search;
               const isActive = activeService === index;
 
@@ -156,6 +160,19 @@ export default function Services() {
             </div>
           </div>
         </div>
+
+        {/*View All button */}
+      <div className="text-center mt-12">
+        <Link to = '/services'
+          className='inline-flex items-center gap-2 px-8 py-4
+            bg-dark text-white font-body font-semibold rounded-lg hover:bg-dark/90
+            transition-colors duration-300 group
+          '
+          >
+          View All Services
+          <ChevronRight className='w-5 h-5 group-hover:translate-x-1 transition-transform duration-300' />
+        </Link>
+      </div>
       </div>
     </section>
   );

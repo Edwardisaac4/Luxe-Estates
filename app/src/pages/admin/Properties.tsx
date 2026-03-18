@@ -30,7 +30,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { properties } from '@/data/mockData';
+import { useProperties } from '@/contexts/PropertiesContext';
 import type { Property } from '@/types';
 
 function formatPrice(price: number) {
@@ -41,6 +41,7 @@ function formatPrice(price: number) {
 }
 
 export default function Properties() {
+  const { properties, deleteProperty } = useProperties();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -63,6 +64,7 @@ export default function Properties() {
 
   const confirmDelete = () => {
     if (propertyToDelete) {
+      deleteProperty(propertyToDelete.id);
       toast.success(`Property "${propertyToDelete.title}" deleted successfully`);
       setDeleteDialogOpen(false);
       setPropertyToDelete(null);
@@ -82,7 +84,7 @@ export default function Properties() {
           </p>
         </div>
         <Button asChild>
-          <Link to="#">
+          <Link to="/admin/properties/new">
             <Plus className="w-4 h-4 mr-2" />
             Add Property
           </Link>
@@ -180,9 +182,11 @@ export default function Properties() {
                         View
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit
+                    <DropdownMenuItem asChild>
+                      <Link to={`/admin/properties/${property.id}/edit`}>
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-red-600"

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Plus,
   Search,
@@ -28,13 +29,21 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { agents } from '@/data/mockData';
+import { useAgents } from '@/contexts/AgentsContext';
 import type { Agent } from '@/types';
 
 export default function Agents() {
+  const { agents, deleteAgent } = useAgents();
   const [searchQuery, setSearchQuery] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [agentToDelete, setAgentToDelete] = useState<Agent | null>(null);
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+
+  const handleViewProfile = (agent: Agent) => {
+    setSelectedAgent(agent);
+    setProfileDialogOpen(true);
+  };
 
   // Filter agents
   const filteredAgents = agents.filter(
@@ -51,6 +60,7 @@ export default function Agents() {
 
   const confirmDelete = () => {
     if (agentToDelete) {
+      deleteAgent(agentToDelete.id);
       toast.success(`Agent "${agentToDelete.name}" deleted successfully`);
       setDeleteDialogOpen(false);
       setAgentToDelete(null);
@@ -65,9 +75,11 @@ export default function Agents() {
           <h1 className="font-display text-3xl font-bold text-dark">Agents</h1>
           <p className="font-body text-dark/60">Manage your team of agents</p>
         </div>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Agent
+        <Button asChild>
+          <Link to="/admin/agents/new">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Agent
+          </Link>
         </Button>
       </div>
 
@@ -104,9 +116,11 @@ export default function Agents() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem>
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit
+                    <DropdownMenuItem asChild>
+                      <Link to={`/admin/agents/${agent.id}/edit`}>
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-red-600"
@@ -151,7 +165,7 @@ export default function Agents() {
                     Sales
                   </span>
                 </div>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => handleViewProfile(agent)}>
                   View Profile
                 </Button>
               </div>
@@ -171,6 +185,61 @@ export default function Agents() {
           </Button>
         </div>
       )}
+
+      {/* Agent Profile Dialog */}
+      <Dialog open={profileDialogOpen} onOpenChange={setProfileDialogOpen}>
+        <DialogContent className="max-w-md">
+          {selectedAgent && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-4 mt-2">
+                  <img
+                    src={selectedAgent.image}
+                    alt={selectedAgent.name}
+                    className="w-20 h-20 rounded-full object-cover"
+                  />
+                  <div>
+                    <DialogTitle className="font-display text-xl">{selectedAgent.name}</DialogTitle>
+                    <DialogDescription className="font-body">{selectedAgent.role}</DialogDescription>
+                    <Badge variant="secondary" className="mt-1">{selectedAgent.sales ?? 0} Sales</Badge>
+                  </div>
+                </div>
+              </DialogHeader>
+              <div className="space-y-4 mt-2">
+                {selectedAgent.bio && (
+                  <p className="font-body text-sm text-dark/70 leading-relaxed">{selectedAgent.bio}</p>
+                )}
+                <div className="border-t border-border pt-4 space-y-2">
+                  <div className="flex items-center gap-2 text-dark/70">
+                    <Mail className="w-4 h-4" />
+                    <a href={`mailto:${selectedAgent.email}`} className="font-body text-sm hover:underline">
+                      {selectedAgent.email}
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-2 text-dark/70">
+                    <Phone className="w-4 h-4" />
+                    <a href={`tel:${selectedAgent.phone}`} className="font-body text-sm hover:underline">
+                      {selectedAgent.phone}
+                    </a>
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="mt-4 flex gap-2">
+                <Button variant="outline" asChild className="flex-1 gap-2">
+                  <a href={`tel:${selectedAgent.phone}`}>
+                    <Phone className="w-4 h-4" /> Call
+                  </a>
+                </Button>
+                <Button asChild className="flex-1 gap-2">
+                  <a href={`mailto:${selectedAgent.email}`}>
+                    <Mail className="w-4 h-4" /> Email
+                  </a>
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

@@ -27,32 +27,34 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { inquiries } from '@/data/mockData';
+import { useInquiries, type InquiryMessage } from '@/contexts/InquiriesContext';
 import type { Inquiry } from '@/types';
 
 export default function Inquiries() {
+  const { inquiries, updateInquiryStatus } = useInquiries();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selectedInquiry, setSelectedInquiry] = useState<Inquiry | null>(null);
+  const [selectedInquiry, setSelectedInquiry] = useState<InquiryMessage | Inquiry | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
   // Filter inquiries
   const filteredInquiries = inquiries.filter((inquiry) => {
     const matchesSearch =
-      inquiry.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inquiry.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inquiry.message.toLowerCase().includes(searchQuery.toLowerCase());
+      (inquiry.name?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
+      (inquiry.email?.toLowerCase().includes(searchQuery.toLowerCase()) || '') ||
+      (inquiry.message?.toLowerCase().includes(searchQuery.toLowerCase()) || '');
     const matchesStatus =
       statusFilter === 'all' || inquiry.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const handleView = (inquiry: Inquiry) => {
+  const handleView = (inquiry: InquiryMessage | Inquiry) => {
     setSelectedInquiry(inquiry);
     setViewDialogOpen(true);
   };
 
-  const handleStatusChange = (_inquiry: Inquiry, newStatus: string) => {
+  const handleStatusChange = (inquiry: InquiryMessage | Inquiry, newStatus: 'new' | 'contacted' | 'closed') => {
+    updateInquiryStatus(inquiry.id, newStatus);
     toast.success(`Inquiry status updated to ${newStatus}`);
   };
 
@@ -137,13 +139,13 @@ export default function Inquiries() {
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-beige/20 flex items-center justify-center flex-shrink-0">
                     <span className="font-display font-medium text-beige text-lg">
-                      {inquiry.name.charAt(0)}
+                      {inquiry.name?.charAt(0) || 'U'}
                     </span>
                   </div>
                   <div>
                     <div className="flex items-center gap-3 mb-1">
                       <h3 className="font-display font-semibold text-dark">
-                        {inquiry.name}
+                        {inquiry.name || 'Unknown User'}
                       </h3>
                       {getStatusBadge(inquiry.status)}
                     </div>
@@ -245,12 +247,12 @@ export default function Inquiries() {
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-full bg-beige/20 flex items-center justify-center">
                   <span className="font-display font-medium text-beige text-2xl">
-                    {selectedInquiry.name.charAt(0)}
+                    {selectedInquiry.name?.charAt(0) || 'U'}
                   </span>
                 </div>
                 <div>
                   <h3 className="font-display font-semibold text-dark text-lg">
-                    {selectedInquiry.name}
+                    {selectedInquiry.name || 'Unknown User'}
                   </h3>
                   {getStatusBadge(selectedInquiry.status)}
                 </div>
@@ -279,16 +281,36 @@ export default function Inquiries() {
                 </p>
               </div>
 
-              <div className="flex gap-2">
-                <Button className="flex-1">
-                  <Mail className="w-4 h-4 mr-2" />
-                  Reply via Email
-                </Button>
-                <Button variant="outline" className="flex-1">
+              <div className="flex justify-end gap-4 mt-6">
+              <Button asChild variant="outline">
+                <a
+                  href={selectedInquiry.phone ? `tel:${selectedInquiry.phone}` : '#'}
+                  onClick={(e) => {
+                    if (!selectedInquiry.phone) {
+                      e.preventDefault();
+                      toast.error('No phone number provided');
+                    }
+                  }}
+                >
                   <Phone className="w-4 h-4 mr-2" />
                   Call
-                </Button>
-              </div>
+                </a>
+              </Button>
+              <Button asChild>
+                <a
+                  href={selectedInquiry.email ? `mailto:${selectedInquiry.email}?subject=RE: ${'propertyTitle' in selectedInquiry ? selectedInquiry.propertyTitle : 'Luxe Estates Inquiry'}` : '#'}
+                  onClick={(e) => {
+                    if (!selectedInquiry.email) {
+                      e.preventDefault();
+                      toast.error('No email address provided');
+                    }
+                  }}
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Reply via Email
+                </a>
+              </Button>
+            </div>
             </div>
           )}
         </DialogContent>

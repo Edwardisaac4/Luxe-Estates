@@ -1,11 +1,20 @@
 import { useState, useEffect } from 'react';
+import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Link, useLocation } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const navLinks = [
   { name: 'Home', href: '/' },
   { name: 'Listings', href: '/listings' },
+  { name: 'Services', href: '/services' },
   { name: 'About', href: '/about' },
   { name: 'Contact', href: '/contact' },
 ];
@@ -13,7 +22,27 @@ const navLinks = [
 export default function Navigation() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showCursor, setShowCursor] = useState(true);
+  const FULL_TEXT = 'LUXE ESTATES';
+
+  const count = useMotionValue(0);
+  const rounded = useTransform(count, (latest) => Math.round(latest));
+  const displayedText = useTransform(rounded, (latest) => FULL_TEXT.slice(0, latest));
+
+  // Typewriter effect on mount
+  useEffect(() => {
+    const controls = animate(count, FULL_TEXT.length, {
+      type: "tween",
+      duration: FULL_TEXT.length * 0.07,
+      ease: "linear",
+      onComplete: () => {
+        setTimeout(() => setShowCursor(false), 1200);
+      }
+    });
+    return controls.stop;
+  }, [count, FULL_TEXT.length]);
   const location = useLocation();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -44,11 +73,14 @@ export default function Navigation() {
           {/* Logo */}
           <Link
             to="/"
-            className={`font-display text-xl font-bold tracking-wider transition-all duration-300 ${
+            className={`font-display text-xl font-bold tracking-wider transition-all duration-300 flex items-center ${
               isScrolled ? 'text-dark scale-90' : 'text-white'
             }`}
           >
-            LUXE ESTATES
+            <motion.span>{displayedText}</motion.span>
+            {showCursor && (
+              <span className="animate-pulse ml-0.5">|</span>
+            )}
           </Link>
 
           {/* Desktop Navigation */}
@@ -77,18 +109,55 @@ export default function Navigation() {
             ))}
           </div>
 
-          {/* CTA Button */}
+          {/* CTA Button / Profile */}
           <div className="hidden md:block">
-            <Button
-              asChild
-              className={`font-body text-sm font-medium px-6 transition-all duration-300 ${
-                isScrolled
-                  ? 'bg-dark text-white hover:bg-dark/90'
-                  : 'bg-white text-dark hover:bg-white/90'
-              }`}
-            >
-              <Link to="/admin/login">Admin Login</Link>
-            </Button>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className={`w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-sm transition-all duration-300 ${
+                    isScrolled ? 'bg-dark text-white hover:bg-dark/90 hover:ring-2 hover:ring-beige/30' : 'bg-white text-dark hover:bg-white/90 hover:ring-2 hover:ring-white/30'
+                  }`}>
+                    {user.name.split(' ').map(n => n[0]).join('')}
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 mt-2 pt-0 pb-2 bg-white/95 backdrop-blur-md rounded-xl shadow-xl border-dark/5">
+                  <div className="px-4 py-4 border-b border-dark/5 mb-1">
+                    <p className="text-sm font-display font-bold leading-none text-dark">{user.name}</p>
+                    <p className="text-xs leading-none text-dark/50 mt-1.5">{user.email}</p>
+                  </div>
+                  <DropdownMenuItem asChild className="cursor-pointer font-body hover:bg-beige/10 py-2.5 px-4 focus:bg-beige/10">
+                    <Link to="/portal?tab=Dashboard">Dashboard</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer font-body hover:bg-beige/10 py-2.5 px-4 focus:bg-beige/10">
+                    <Link to="/portal?tab=Saved+Properties">Saved Properties</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer font-body hover:bg-beige/10 py-2.5 px-4 focus:bg-beige/10">
+                    <Link to="/portal?tab=Viewing+Schedule">Viewing Schedule</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer font-body hover:bg-beige/10 py-2.5 px-4 focus:bg-beige/10">
+                    <Link to="/portal?tab=Messages+%26+Offers">Messages & Offers</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer font-body hover:bg-beige/10 py-2.5 px-4 focus:bg-beige/10">
+                    <Link to="/portal?tab=Account+Settings">Account Settings</Link>
+                  </DropdownMenuItem>
+                  <div className="h-px bg-dark/5 my-1" />
+                  <DropdownMenuItem onClick={logout} className="cursor-pointer font-body font-medium text-red-600 hover:text-red-700 hover:bg-red-50 focus:bg-red-50 focus:text-red-700 py-2.5 px-4">
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button
+                asChild
+                className={`font-body text-sm font-medium px-6 transition-all duration-300 ${
+                  isScrolled
+                    ? 'bg-dark text-white hover:bg-dark/90'
+                    : 'bg-white text-dark hover:bg-white/90'
+                }`}
+              >
+                <Link to="/client-login">LOGIN</Link>
+              </Button>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -126,15 +195,46 @@ export default function Navigation() {
                 {link.name}
               </Link>
             ))}
-            <Button
-              asChild
-              className="w-full bg-dark text-white hover:bg-dark/90 mt-3"
-            >
-              <Link to="/admin/login">Admin Login</Link>
-            </Button>
+            {user ? (
+              <div className="pt-2">
+                <div className="px-3 py-3 mb-2 border-b border-dark/10 bg-dark/5 rounded-lg">
+                  <p className="text-sm font-display font-bold text-dark">{user.name}</p>
+                  <p className="text-xs text-dark/60 mt-0.5">{user.email}</p>
+                </div>
+                {['Dashboard', 'Saved Properties', 'Viewing Schedule', 'Messages & Offers', 'Account Settings'].map((tab) => (
+                  <Link
+                    key={tab}
+                    to={`/portal?tab=${encodeURIComponent(tab)}`}
+                    className="block font-body text-sm font-medium py-2 px-3 rounded-md text-dark/70 hover:bg-beige/10 hover:text-dark transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {tab}
+                  </Link>
+                ))}
+                <button
+                  onClick={() => {
+                    logout();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="w-full text-left font-body text-sm font-bold py-2 px-3 rounded-md text-red-600 hover:bg-red-50 transition-colors mt-2"
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <Button
+                asChild
+                className="w-full bg-dark text-white hover:bg-dark/90 mt-3"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <Link to="/client-login">Client Portal Login</Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>
     </nav>
   );
 }
+
+

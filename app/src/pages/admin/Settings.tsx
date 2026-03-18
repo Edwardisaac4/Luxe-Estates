@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Lock, Bell, Shield, Save } from 'lucide-react';
+import { User, Lock, Bell, Shield, Save, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Settings() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
 
   // Profile form state
@@ -17,6 +17,7 @@ export default function Settings() {
     name: user?.name || '',
     email: user?.email || '',
     phone: '+1 (555) 123-4567',
+    role: user?.role === 'admin' ? 'Administrator' : 'Agent',
     bio: 'Experienced real estate professional with a passion for helping clients find their dream homes.',
   });
 
@@ -36,12 +37,20 @@ export default function Settings() {
     smsNotifications: true,
   });
 
-  const handleProfileSave = async () => {
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
     setIsLoading(true);
     // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    toast.success('Profile updated successfully');
-    setIsLoading(false);
+    setTimeout(() => {
+      updateUser({
+        name: profileData.name,
+        email: profileData.email,
+        // Assuming bio can also be updated via updateUser
+        bio: profileData.bio,
+      });
+      toast.success('Profile updated successfully');
+      setIsLoading(false);
+    }, 1000);
   };
 
   const handlePasswordSave = async () => {
@@ -99,18 +108,36 @@ export default function Settings() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center gap-6">
-                <img
-                  src={user?.avatar || '/avatar-2.jpg'}
-                  alt={user?.name}
-                  className="w-24 h-24 rounded-full object-cover"
-                />
-                <div>
-                  <Button variant="outline" className="mb-2">
-                    Change Photo
-                  </Button>
-                  <p className="font-body text-sm text-dark/60">
-                    JPG, GIF or PNG. Max size 2MB.
+              <div className="flex gap-4">
+                <div className="relative">
+                  <img
+                    src={user?.avatar || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"}
+                    alt="Profile"
+                    className="w-24 h-24 rounded-full object-cover"
+                  />
+                  <button className="absolute bottom-0 right-0 w-8 h-8 bg-dark text-white rounded-full flex items-center justify-center hover:bg-dark/90 transition-colors">
+                    <Camera className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex flex-col justify-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm">
+                      Change Photo
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={() => {
+                        updateUser({ avatar: undefined });
+                        toast.success('Profile photo removed');
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                  <p className="font-body text-xs text-dark/50">
+                    JPG, GIF or PNG. Max size of 800K
                   </p>
                 </div>
               </div>
@@ -174,7 +201,7 @@ export default function Settings() {
 
               <div className="flex justify-end">
                 <Button
-                  onClick={handleProfileSave}
+                  onClick={handleSaveProfile}
                   disabled={isLoading}
                   className="gap-2"
                 >

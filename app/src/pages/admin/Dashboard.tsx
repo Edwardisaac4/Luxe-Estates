@@ -21,7 +21,10 @@ import {
   BarChart,
   Bar,
 } from 'recharts';
-import { properties, inquiries, stats } from '@/data/mockData';
+import { useProperties } from '@/contexts/PropertiesContext';
+import { useAgents } from '@/contexts/AgentsContext';
+import { useInquiries } from '@/contexts/InquiriesContext';
+import { properties as staticProperties } from '@/data/mockData';
 
 // Mock chart data
 const monthlyData = [
@@ -33,49 +36,65 @@ const monthlyData = [
   { month: 'Jun', sales: 30, inquiries: 72 },
 ];
 
+// Chart data derived from static mock data (monthly historical data doesn't change in real time)
 const propertyTypeData = [
-  { type: 'Houses', count: 45 },
-  { type: 'Apartments', count: 32 },
-  { type: 'Villas', count: 18 },
-  { type: 'Penthouses', count: 12 },
-];
+  { type: 'Houses', count: staticProperties.filter(p => p.propertyType === 'house').length },
+  { type: 'Apartments', count: staticProperties.filter(p => p.propertyType === 'apartment').length },
+  { type: 'Villas', count: staticProperties.filter(p => p.propertyType === 'villa').length },
+  { type: 'Penthouses', count: staticProperties.filter(p => p.propertyType === 'penthouse').length },
+  { type: 'Condos', count: staticProperties.filter(p => p.propertyType === 'condo').length },
+].filter(item => item.count > 0);
 
-const statCards = [
-  {
-    title: 'Total Properties',
-    value: stats.totalProperties,
-    change: '+12%',
-    trend: 'up',
-    icon: Building2,
-    color: 'bg-blue-500',
-  },
-  {
-    title: 'Total Agents',
-    value: stats.totalAgents,
-    change: '+5%',
-    trend: 'up',
-    icon: Users,
-    color: 'bg-green-500',
-  },
-  {
-    title: 'New Inquiries',
-    value: inquiries.filter((i) => i.status === 'new').length,
-    change: '+18%',
-    trend: 'up',
-    icon: MessageSquare,
-    color: 'bg-yellow-500',
-  },
-  {
-    title: 'Monthly Revenue',
-    value: `$${(stats.monthlyRevenue / 1000000).toFixed(1)}M`,
-    change: '+8%',
-    trend: 'up',
-    icon: DollarSign,
-    color: 'bg-purple-500',
-  },
-];
+// Stat cards are now computed inside the component using live context data
 
 export default function Dashboard() {
+  const { properties } = useProperties();
+  const { agents } = useAgents();
+  const { inquiries } = useInquiries();
+
+  const activeProperties = properties.filter(p => p.status !== 'sold');
+  const openInquiries = inquiries.filter(i => i.status === 'new').length;
+  const estimatedRevenue = properties
+    .filter(p => p.status === 'sold')
+    .reduce((sum, p) => sum + p.price * 0.03, 0); // 3% commission estimate
+
+  const statCards = [
+    {
+      title: 'Active Properties',
+      value: activeProperties.length,
+      change: '+12%',
+      trend: 'up',
+      icon: Building2,
+      color: 'bg-blue-500',
+    },
+    {
+      title: 'Total Agents',
+      value: agents.length,
+      change: '+5%',
+      trend: 'up',
+      icon: Users,
+      color: 'bg-green-500',
+    },
+    {
+      title: 'Open Inquiries',
+      value: openInquiries,
+      change: openInquiries > 5 ? '+18%' : '-3%',
+      trend: openInquiries > 5 ? 'up' : 'down',
+      icon: MessageSquare,
+      color: 'bg-yellow-500',
+    },
+    {
+      title: 'Est. Revenue',
+      value: estimatedRevenue >= 1000000
+        ? `$${(estimatedRevenue / 1000000).toFixed(1)}M`
+        : `$${Math.round(estimatedRevenue / 1000)}K`,
+      change: '+8%',
+      trend: 'up',
+      icon: DollarSign,
+      color: 'bg-purple-500',
+    },
+  ];
+
   const recentProperties = properties.slice(0, 5);
   const recentInquiries = inquiries.slice(0, 5);
 
@@ -92,7 +111,7 @@ export default function Dashboard() {
           </p>
         </div>
         <Button asChild>
-          <Link to="/admin/properties/new">Add New Property</Link>
+          <Link to="/admin/properties">Add New Property</Link>
         </Button>
       </div>
 
@@ -270,12 +289,12 @@ export default function Dashboard() {
                 >
                   <div className="w-10 h-10 rounded-full bg-beige/20 flex items-center justify-center flex-shrink-0">
                     <span className="font-display font-medium text-beige">
-                      {inquiry.name.charAt(0)}
+                      {inquiry.name?.charAt(0) ?? '?'}
                     </span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-display font-medium text-dark">
-                      {inquiry.name}
+                      {inquiry.name ?? 'Anonymous'}
                     </p>
                     <p className="font-body text-sm text-dark/60 truncate">
                       {inquiry.message}

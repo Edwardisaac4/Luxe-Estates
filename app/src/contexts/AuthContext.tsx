@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import type { User } from '@/types';
 
@@ -6,17 +7,25 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
+  updateUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock admin user
 const MOCK_ADMIN: User = {
   id: '1',
   name: 'Admin User',
   email: 'admin@luxestates.com',
   role: 'admin',
   avatar: '/avatar-2.jpg',
+};
+
+// Mock client user
+const MOCK_CLIENT: User = {
+  id: '2',
+  name: 'John Doe',
+  email: 'client@example.com',
+  role: 'user',
 };
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -28,11 +37,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(MOCK_ADMIN);
       return true;
     }
+    if (email === 'client@example.com' && password === 'password123') {
+      setUser(MOCK_CLIENT);
+      return true;
+    }
     return false;
   }, []);
 
   const logout = useCallback(() => {
     setUser(null);
+  }, []);
+
+  const updateUser = useCallback((updates: Partial<User>) => {
+    setUser(prev => prev ? { ...prev, ...updates } : null);
   }, []);
 
   return (
@@ -42,6 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!user,
         login,
         logout,
+        updateUser,
       }}
     >
       {children}
